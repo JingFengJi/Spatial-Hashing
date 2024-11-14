@@ -75,12 +75,14 @@ namespace HMH.ECS.SpatialHashing.Debug
             public SpatialHash<ItemTest>.Concurrent SpatialHash;
         }
         [BurstCompile]
-        public struct RemoveItemTestJob : IJob
+        public struct RemoveItemTestJob : IJobParallelFor
         {
-            public void Execute()
+            public void Execute(int index)
             {
-                for (int i = 0; i < ItemList.Length; i++)
-                    SpatialHash.Remove(ItemList[i].SpatialHashingIndex);
+                var item = ItemList[index];
+                SpatialHash.Remove(item.SpatialHashingIndex);
+                // for (int i = 0; i < ItemList.Length; i++)
+                //     SpatialHash.Remove(ItemList[i].SpatialHashingIndex);
             }
 
             public NativeList<ItemTest>  ItemList;
@@ -93,23 +95,27 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             var itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
 
+            Profiler.BeginSample("SpatialHasing 1");
             for (var i = 0; i < _listItem.Count; i++)
             {
                 if (math.any(_listItem[i].Position != (float3)_listItemGameobject[i].transform.position))
                 {
                     var item = _listItem[i];
-                    Profiler.BeginSample("SpatialHasing Move");
                     itemList.Add(item);
-                    Profiler.EndSample();
                 }
             }
+            Profiler.EndSample();
+            
+            Profiler.BeginSample("SpatialHasing 2");
             //   new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule().Complete();
             int length = itemList.Length;
             var inputDep = new JobHandle();
-            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule(inputDep);
+            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule(length,32,inputDep);
             inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = itemList }.Schedule(length, 32, inputDep);
             inputDep.Complete();
-
+            Profiler.EndSample();
+            
+            Profiler.BeginSample("SpatialHasing 3");
             int delta = 0;
             for (var i = 0; i < _listItem.Count; i++)
             {
@@ -120,6 +126,7 @@ namespace HMH.ECS.SpatialHashing.Debug
                     _listItem[i]  = item;
                 }
             }
+            Profiler.EndSample();
             itemList.Dispose();
         }
 
