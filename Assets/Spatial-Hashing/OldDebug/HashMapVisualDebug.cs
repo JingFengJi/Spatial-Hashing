@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -12,34 +13,81 @@ namespace HMH.ECS.SpatialHashing.Debug
 {
     public class HashMapVisualDebug : MonoBehaviour, IRay
     {
+        public Mesh instanceMesh;
+        public Material instanceMaterial;
+        public int subMeshIndex = 0;
+
+        private int cachedInstanceCount = -1;
+        private int cachedSubMeshIndex = -1;
+        private ComputeBuffer positionBuffer;
+        private ComputeBuffer argsBuffer;
+        private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
+        
+        private NativeArray<float4> _positionBuffer;
+        
+        void OnDisable() {
+            if (positionBuffer != null)
+                positionBuffer.Release();
+            positionBuffer = null;
+
+            if (argsBuffer != null)
+                argsBuffer.Release();
+            argsBuffer = null;
+        }
+        
+        private FpsCounter m_FpsCounter;
+        
         private void Start()
         {
+            
+            m_FpsCounter = new FpsCounter(0.5f);
             Random.InitState(123456789);
-
+            argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
+            _positionBuffer = new NativeArray<float4>(_spawnCount, Allocator.Persistent);
             var copy = new Bounds(_worldBounds.Center, _worldBounds.Size * 4F);
             _spatialHashing = new SpatialHash<ItemTest>(copy, new float3(10F), Allocator.Persistent);
 
+            // Ensure submesh index is in range
+            if (instanceMesh != null)
+                subMeshIndex = Mathf.Clamp(subMeshIndex, 0, instanceMesh.subMeshCount - 1);
+
+            // Positions
+            if (positionBuffer != null)
+                positionBuffer.Release();
+            positionBuffer = new ComputeBuffer(_spawnCount, 16);
+            
             for (int i = 0; i < _spawnCount; i++)
             {
-                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
-
-                if (_useRaycast == false)
-                    g.AddComponent<HashTeleport>();
-                Destroy(g.GetComponent<BoxCollider>());
-
-                g.transform.position = new Vector3(Random.Range(_worldBounds.Min.x + 1, _worldBounds.Max.x),
-                                                   Random.Range(_worldBounds.Min.y + 1, _worldBounds.Max.y),
-                                                   Random.Range(_worldBounds.Min.z + 1, _worldBounds.Max.z));
-
-                var item = new ItemTest() { ID = i, Position = g.transform.position };
-
-                Profiler.BeginSample("SpatialHasing Add");
+                float angle = Random.Range(0.0f, Mathf.PI * 2.0f);
+                float distance = Random.Range(20.0f, 100.0f);
+                float height = Random.Range(-20.0f, 20.0f);
+                float size = Random.Range(1f, 5f);
+                
+                _positionBuffer[i] = new float4(Mathf.Sin(angle) * distance, height, Mathf.Cos(angle) * distance, size);
+                var item = new ItemTest()
+                    { ID = i, Position = new float3(_positionBuffer[i].x, _positionBuffer[i].y, _positionBuffer[i].z) };
                 _spatialHashing.Add(ref item);
-                Profiler.EndSample();
-
-                _listItemGameobject.Add(g);
                 _listItem.Add(item);
             }
+
+            positionBuffer.SetData(_positionBuffer);
+            instanceMaterial.SetBuffer("positionBuffer", positionBuffer);
+
+            // Indirect args
+            if (instanceMesh != null) {
+                args[0] = (uint)instanceMesh.GetIndexCount(subMeshIndex);
+                args[1] = (uint)_spawnCount;
+                args[2] = (uint)instanceMesh.GetIndexStart(subMeshIndex);
+                args[3] = (uint)instanceMesh.GetBaseVertex(subMeshIndex);
+            }
+            else
+            {
+                args[0] = args[1] = args[2] = args[3] = 0;
+            }
+            argsBuffer.SetData(args);
+
+            cachedInstanceCount = _spawnCount;
+            cachedSubMeshIndex = subMeshIndex;
         }
 
         [BurstCompile]
@@ -75,22 +123,58 @@ namespace HMH.ECS.SpatialHashing.Debug
             public SpatialHash<ItemTest>.Concurrent SpatialHash;
         }
         [BurstCompile]
-        public struct RemoveItemTestJob : IJobParallelFor
+        public struct RemoveItemTestJob : IJob
         {
-            public void Execute(int index)
+            public void Execute()
             {
-                var item = ItemList[index];
-                SpatialHash.Remove(item.SpatialHashingIndex);
-                // for (int i = 0; i < ItemList.Length; i++)
-                //     SpatialHash.Remove(ItemList[i].SpatialHashingIndex);
+                for (int i = 0; i < ItemList.Length; i++)
+                    SpatialHash.Remove(ItemList[i].SpatialHashingIndex);
             }
 
             public NativeList<ItemTest>  ItemList;
             public SpatialHash<ItemTest> SpatialHash;
         }
 
-        private void FixedUpdate()
+        [BurstCompile]
+        public struct UpdatePosJob : IJobParallelFor
         {
+            public NativeArray<float4> PositionBuffer;
+            [ReadOnly] public float Time;
+            
+            public void Execute(int index)
+            {
+                ref float4 pos = ref PositionBuffer.GetElementAsRef(index);
+                pos += new float4(math.sin(Time), 0, math.cos(Time), 0);
+            }
+        }
+
+        private void OnGUI()
+        {
+            Matrix4x4 cachedMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.Scale(new Vector3(2, 2, 1f));
+            string title = $"FPS: {m_FpsCounter.CurrentFps:F2}";
+            if (GUILayout.Button(title, GUILayout.Width(150f), GUILayout.Height(100f)))
+            {
+                
+            }
+            GUI.matrix = cachedMatrix;
+        }
+
+        private void Update()
+        {
+            m_FpsCounter.Update(Time.deltaTime, Time.unscaledDeltaTime);
+            
+            var UpdatePosJob = new UpdatePosJob()
+            {
+                PositionBuffer = _positionBuffer,
+                Time = Time.realtimeSinceStartup
+            };
+            UpdatePosJob.Schedule(_positionBuffer.Length, 64).Complete();
+            positionBuffer.SetData(_positionBuffer);
+            instanceMaterial.SetBuffer("positionBuffer", positionBuffer);
+            
+            Graphics.DrawMeshInstancedIndirect(instanceMesh, subMeshIndex, instanceMaterial, new UnityEngine.Bounds(Vector3.zero, new Vector3(100.0f, 100.0f, 100.0f)), argsBuffer);
+        
             World.DefaultGameObjectInjectionWorld.EntityManager.CompleteAllTrackedJobs();
 
             var itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
@@ -98,7 +182,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             Profiler.BeginSample("SpatialHasing 1");
             for (var i = 0; i < _listItem.Count; i++)
             {
-                if (math.any(_listItem[i].Position != (float3)_listItemGameobject[i].transform.position))
+                if (math.any(_listItem[i].Position != _positionBuffer[i].xyz))
                 {
                     var item = _listItem[i];
                     itemList.Add(item);
@@ -107,11 +191,11 @@ namespace HMH.ECS.SpatialHashing.Debug
             Profiler.EndSample();
             
             Profiler.BeginSample("SpatialHasing 2");
-            //   new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule().Complete();
+            //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule().Complete();
             int length = itemList.Length;
             var inputDep = new JobHandle();
-            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule(length,32,inputDep);
-            inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = itemList }.Schedule(length, 32, inputDep);
+            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule(inputDep);
+            inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = itemList }.Schedule(length, 64, inputDep);
             inputDep.Complete();
             Profiler.EndSample();
             
@@ -119,10 +203,10 @@ namespace HMH.ECS.SpatialHashing.Debug
             int delta = 0;
             for (var i = 0; i < _listItem.Count; i++)
             {
-                if (math.any(_listItem[i].Position != (float3)_listItemGameobject[i].transform.position))
+                if (math.any(_listItem[i].Position != (float3)_positionBuffer[i].xyz))
                 {
                     var item =itemList[delta++];
-                    item.Position = _listItemGameobject[i].transform.position;
+                    item.Position = _positionBuffer[i].xyz;
                     _listItem[i]  = item;
                 }
             }
@@ -140,7 +224,7 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             foreach (var l in _links)
             {
-                DrawCell(l.Key);
+                //DrawCell(l.Key);
 
                 foreach (var item in l.Value)
                     DrawLink(l.Key, item);
@@ -283,7 +367,7 @@ namespace HMH.ECS.SpatialHashing.Debug
         private Transform _endRay;
 
         private List<ItemTest>                   _listItem           = new List<ItemTest>();
-        private List<GameObject>                 _listItemGameobject = new List<GameObject>();
+        //private List<GameObject>                 _listItemGameobject = new List<GameObject>();
         private SpatialHash<ItemTest>            _spatialHashing;
         private float                            _timeLastRefresh = -99F;
         private Dictionary<int3, List<ItemTest>> _links           = new Dictionary<int3, List<ItemTest>>();
