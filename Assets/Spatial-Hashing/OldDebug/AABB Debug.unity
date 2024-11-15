@@ -247,6 +247,15 @@ MonoBehaviour:
   instanceMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   instanceMaterial: {fileID: 2100000, guid: 81202b69f06cd82469d3067f95b68a31, type: 2}
   subMeshIndex: 0
+  m_QuerryBound:
+    _center:
+      x: 5.5
+      y: 5.5
+      z: 5.5
+    _extents:
+      x: 20
+      y: 20
+      z: 20
   _refreshTime: 0.2
   _worldBounds:
     _center:

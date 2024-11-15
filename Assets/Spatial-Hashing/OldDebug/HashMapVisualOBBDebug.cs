@@ -7,13 +7,36 @@ namespace HMH.ECS.SpatialHashing.Debug
 {
     public class HashMapVisualOBBDebug : MonoBehaviour
     {
+
+        [SerializeField]
+        private int _spawnCount;
+        [SerializeField]
+        private Bounds _worldBounds;
+        [SerializeField]
+        private float3 _boundSize = new float3(5F);
+        public  GameObject                               start;
+        public  GameObject                               end;
+        private SpatialHash<HashMapVisualDebug.ItemTest> _spatialHashing;
+        
         private void Start()
         {
             Random.InitState(123456789);
 
             var copy = new Bounds(_worldBounds.Center, _worldBounds.Size);
             _spatialHashing = new SpatialHash<HashMapVisualDebug.ItemTest>(copy, new float3(10F), Allocator.Persistent);
-
+            
+            for (int i = 0; i < _spawnCount; i++)
+            {
+                float angle = Random.Range(0.0f, Mathf.PI * 2.0f);
+                float distance = Random.Range(0f, 100.0f);
+                float height = Random.Range(-20.0f, 20.0f);
+                float size = Random.Range(1f, 5f);
+                
+                    float3 pos = new float3(Mathf.Sin(angle) * distance, height, Mathf.Cos(angle) * distance);
+                var item = new HashMapVisualDebug.ItemTest()
+                    { ID = i, Position = pos, Size = size};
+                _spatialHashing.Add(ref item);
+            }
         }
 
         private void OnDrawGizmos()
@@ -61,10 +84,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             //************ Debug
             var list = new NativeList<int3>(20, Allocator.Temp);
             _spatialHashing.Query(targetBounds, transformRotation, list);
-
-
-
-
+            UnityEngine.Debug.Log(list.Length);
             int3 cell = list[indexToDraw]; //new int3(9, 14, 16);
 
             var bounds = SpatialHash<HashMapVisualDebug.ItemTest>.TransformBounds(in targetBounds, transformRotation);
@@ -137,14 +157,6 @@ namespace HMH.ECS.SpatialHashing.Debug
         }
 
         #region Variables
-
-        [SerializeField]
-        private Bounds _worldBounds;
-        [SerializeField]
-        private float3 _boundSize = new float3(5F);
-        public  GameObject                               start;
-        public  GameObject                               end;
-        private SpatialHash<HashMapVisualDebug.ItemTest> _spatialHashing;
 
         #endregion
     }

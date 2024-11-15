@@ -166,13 +166,13 @@ namespace HMH.ECS.SpatialHashing.Debug
         {
             m_FpsCounter.Update(Time.deltaTime, Time.unscaledDeltaTime);
             
-            var UpdatePosJob = new UpdatePosJob()
-            {
-                PositionBuffer = _positionBuffer,
-                Time = Time.realtimeSinceStartup,
-                ItemList = _listItem
-            };
-            UpdatePosJob.Schedule(_positionBuffer.Length, 64).Complete();
+            // var UpdatePosJob = new UpdatePosJob()
+            // {
+            //     PositionBuffer = _positionBuffer,
+            //     Time = Time.realtimeSinceStartup,
+            //     ItemList = _listItem
+            // };
+            // UpdatePosJob.Schedule(_positionBuffer.Length, 64).Complete();
             positionBuffer.SetData(_positionBuffer);
             instanceMaterial.SetBuffer("positionBuffer", positionBuffer);
             
@@ -193,8 +193,8 @@ namespace HMH.ECS.SpatialHashing.Debug
             // }
             // Profiler.EndSample();
             
-            Profiler.BeginSample("SpatialHasing 2");
-            new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
+            // Profiler.BeginSample("SpatialHasing 2");
+            // //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
             // int length = _listItem.Length;
             // var inputDep = new JobHandle();
             // inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule(inputDep);
@@ -213,10 +213,40 @@ namespace HMH.ECS.SpatialHashing.Debug
             //         _listItem[i]  = item;
             //     }
             // }
-            Profiler.EndSample();
+            // Profiler.EndSample();
             // itemList.Dispose();
-        }
+            
+            m_Results.Clear();
+            Profiler.BeginSample("Query");
+            _spatialHashing.Query(m_QuerryBound, m_Results);
+            Profiler.EndSample();
+            
+            Profiler.BeginSample("RayCast");
+            var startRayPosition = _startRay.position;
+            var startCellBound   = new Bounds(_spatialHashing.GetPositionVoxel(_spatialHashing.GetIndexVoxel(startRayPosition), true), _spatialHashing.CellSize);
 
+            // Gizmos.color = Color.yellow;
+            // Gizmos.DrawLine(startRayPosition, _endRay.position);
+
+            //ItemTest hit = new ItemTest();
+            var      ray = new Ray(startRayPosition, _endRay.position - startRayPosition);
+
+            m_RayacstResult = new ItemTest();
+            if (_spatialHashing.RayCast(ray, ref m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
+            {
+                // Gizmos.color = Color.blue;
+                // Gizmos.DrawCube(hit.GetCenter(), hit.GetSize());
+            }
+            
+            Profiler.EndSample();
+        }
+        
+        [SerializeField]
+        private Bounds m_QuerryBound = new Bounds(5.5F, 100F);
+        private NativeList<ItemTest> m_Results = new NativeList<ItemTest>(32, Allocator.Persistent);
+
+        private ItemTest m_RayacstResult = new ItemTest();
+        
         private void OnDrawGizmos()
         {
             if (Application.isPlaying == false)
@@ -227,17 +257,29 @@ namespace HMH.ECS.SpatialHashing.Debug
             //     Gizmos.color = new Color(0F, 1F, 0F, 0.3F);
             //     Gizmos.DrawCube(_listItem[i].GetCenter(), _listItem[i].GetSize());
             // }
-            
-            if (Time.realtimeSinceStartup - _timeLastRefresh > _refreshTime)
-                RefreshLinks();
-            
-            foreach (var l in _links)
+
+            if (_useQuery)
             {
-                DrawCell(l.Key);
+                Gizmos.color = new Color(1F, 0F, 0F, 0.3F);
+                Gizmos.DrawCube(m_QuerryBound.Center, m_QuerryBound.Size);
             
-                foreach (var item in l.Value)
-                    DrawLink(l.Key, item);
+                for (int i = 0; i < m_Results.Length; i++)
+                {
+                    Gizmos.color = new Color(0F, 1F, 0F, 0.6F); 
+                    Gizmos.DrawCube(m_Results[i].GetCenter(), m_Results[i].GetSize());
+                }
             }
+            
+            // if (Time.realtimeSinceStartup - _timeLastRefresh > _refreshTime)
+            //     RefreshLinks();
+            //
+            // foreach (var l in _links)
+            // {
+            //     DrawCell(l.Key);
+            //
+            //     foreach (var item in l.Value)
+            //         DrawLink(l.Key, item);
+            // }
 
             if (_useRaycast)
             {
@@ -247,35 +289,35 @@ namespace HMH.ECS.SpatialHashing.Debug
                 Gizmos.color = Color.yellow;
                 Gizmos.DrawLine(startRayPosition, _endRay.position);
 
-                ItemTest hit = new ItemTest();
-                var      ray = new Ray(startRayPosition, _endRay.position - startRayPosition);
+                //ItemTest hit = new ItemTest();
+                //var      ray = new Ray(startRayPosition, _endRay.position - startRayPosition);
 
-                if (_spatialHashing.RayCast(ray, ref hit, (_endRay.position - _startRay.position).magnitude))
+                //if (_spatialHashing.RayCast(ray, ref hit, (_endRay.position - _startRay.position).magnitude))
                 {
                     Gizmos.color = Color.blue;
-                    Gizmos.DrawCube(hit.GetCenter(), hit.GetSize() * 3F);
+                    Gizmos.DrawCube(m_RayacstResult.GetCenter(), m_RayacstResult.GetSize());
                 }
 
-                _voxelTraversed.Clear();
-
-                var me = this;
-                _voxelRay.RayCast(ref me, ray.origin, ray.direction, (_endRay.position - _startRay.position).magnitude);
-                Gizmos.color = new Color(0.88F, 0.6F, 0.1F, 0.4F);
-
-                foreach (var voxel in _voxelTraversed)
-                {
-                    var position = _spatialHashing.GetPositionVoxel(voxel, true);
-                    Gizmos.DrawCube(position, _spatialHashing.CellSize);
-                }
-
-                var rayOffsetted = new Ray(ray.origin - (Vector3)(ray.direction * _spatialHashing.CellSize), ray.direction);
-                startCellBound.GetEnterPositionAABB(rayOffsetted, 1 << 25, out var enterPoint);
-                Gizmos.color = Color.white;
-                Gizmos.DrawCube(enterPoint, Vector3.one * 0.3F);
-
-                startCellBound.GetExitPosition(rayOffsetted, 1 << 25, out var exitPoint);
-                Gizmos.color = Color.white;
-                Gizmos.DrawCube(exitPoint, Vector3.one * 0.3F);
+                // _voxelTraversed.Clear();
+                //
+                // var me = this;
+                // _voxelRay.RayCast(ref me, ray.origin, ray.direction, (_endRay.position - _startRay.position).magnitude);
+                // Gizmos.color = new Color(0.88F, 0.6F, 0.1F, 0.4F);
+                //
+                // foreach (var voxel in _voxelTraversed)
+                // {
+                //     var position = _spatialHashing.GetPositionVoxel(voxel, true);
+                //     Gizmos.DrawCube(position, _spatialHashing.CellSize);
+                // }
+                //
+                // var rayOffsetted = new Ray(ray.origin - (Vector3)(ray.direction * _spatialHashing.CellSize), ray.direction);
+                // startCellBound.GetEnterPositionAABB(rayOffsetted, 1 << 25, out var enterPoint);
+                // Gizmos.color = Color.white;
+                // Gizmos.DrawCube(enterPoint, Vector3.one);
+                //
+                // startCellBound.GetExitPosition(rayOffsetted, 1 << 25, out var exitPoint);
+                // Gizmos.color = Color.white;
+                // Gizmos.DrawCube(exitPoint, Vector3.one);
 
             }
         }
@@ -370,6 +412,7 @@ namespace HMH.ECS.SpatialHashing.Debug
         private int _spawnCount;
         [SerializeField]
         private bool _useRaycast;
+        [SerializeField] private bool _useQuery;
         [SerializeField]
         private Transform _startRay;
         [SerializeField]
