@@ -36,8 +36,8 @@
         #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
             float4 data = positionBuffer[unity_InstanceID];
 
-            float rotation = data.w * data.w * _Time.y * 0.5f;
-            rotate2D(data.xz, rotation);
+            // float rotation = data.w * data.w * _Time.y * 0.5f;
+            // rotate2D(data.xz, rotation);
 
             unity_ObjectToWorld._11_21_31_41 = float4(data.w, 0, 0, 0);
             unity_ObjectToWorld._12_22_32_42 = float4(0, data.w, 0, 0);

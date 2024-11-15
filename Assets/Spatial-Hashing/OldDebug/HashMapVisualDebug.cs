@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -24,8 +25,9 @@ namespace HMH.ECS.SpatialHashing.Debug
         private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
         
         private NativeArray<float4> _positionBuffer;
-        
-        void OnDisable() {
+
+        void OnDisable()
+        {
             if (positionBuffer != null)
                 positionBuffer.Release();
             positionBuffer = null;
@@ -34,7 +36,7 @@ namespace HMH.ECS.SpatialHashing.Debug
                 argsBuffer.Release();
             argsBuffer = null;
         }
-        
+
         private FpsCounter m_FpsCounter;
         
         private void Start()
@@ -65,7 +67,7 @@ namespace HMH.ECS.SpatialHashing.Debug
                 
                 _positionBuffer[i] = new float4(Mathf.Sin(angle) * distance, height, Mathf.Cos(angle) * distance, size);
                 var item = new ItemTest()
-                    { ID = i, Position = new float3(_positionBuffer[i].x, _positionBuffer[i].y, _positionBuffer[i].z) };
+                    { ID = i, Position = new float3(_positionBuffer[i].x, _positionBuffer[i].y, _positionBuffer[i].z), Size = size};
                 _spatialHashing.Add(ref item);
                 _listItem.Add(item);
             }
@@ -93,7 +95,6 @@ namespace HMH.ECS.SpatialHashing.Debug
         [BurstCompile]
         public struct MoveItemTestJob : IJob
         {
-            #region Implementation of IJob
 
             /// <inheritdoc />
             public void Execute()
@@ -104,8 +105,6 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             public NativeList<ItemTest>  ItemList;
             public SpatialHash<ItemTest> SpatialHash;
-
-            #endregion
         }
 
         [BurstCompile]
@@ -138,6 +137,7 @@ namespace HMH.ECS.SpatialHashing.Debug
         [BurstCompile]
         public struct UpdatePosJob : IJobParallelFor
         {
+            [NativeDisableContainerSafetyRestriction] public NativeList<ItemTest> ItemList;
             public NativeArray<float4> PositionBuffer;
             [ReadOnly] public float Time;
             
@@ -145,6 +145,8 @@ namespace HMH.ECS.SpatialHashing.Debug
             {
                 ref float4 pos = ref PositionBuffer.GetElementAsRef(index);
                 pos += new float4(math.sin(Time), 0, math.cos(Time), 0);
+                ref ItemTest item = ref ItemList.ElementAt(index);
+                item.Position = new float3(pos.x, pos.y, pos.z);
             }
         }
 
@@ -167,7 +169,8 @@ namespace HMH.ECS.SpatialHashing.Debug
             var UpdatePosJob = new UpdatePosJob()
             {
                 PositionBuffer = _positionBuffer,
-                Time = Time.realtimeSinceStartup
+                Time = Time.realtimeSinceStartup,
+                ItemList = _listItem
             };
             UpdatePosJob.Schedule(_positionBuffer.Length, 64).Complete();
             positionBuffer.SetData(_positionBuffer);
@@ -175,43 +178,43 @@ namespace HMH.ECS.SpatialHashing.Debug
             
             Graphics.DrawMeshInstancedIndirect(instanceMesh, subMeshIndex, instanceMaterial, new UnityEngine.Bounds(Vector3.zero, new Vector3(100.0f, 100.0f, 100.0f)), argsBuffer);
         
-            World.DefaultGameObjectInjectionWorld.EntityManager.CompleteAllTrackedJobs();
+            //World.DefaultGameObjectInjectionWorld.EntityManager.CompleteAllTrackedJobs();
 
-            var itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
+            //var itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
 
-            Profiler.BeginSample("SpatialHasing 1");
-            for (var i = 0; i < _listItem.Count; i++)
-            {
-                if (math.any(_listItem[i].Position != _positionBuffer[i].xyz))
-                {
-                    var item = _listItem[i];
-                    itemList.Add(item);
-                }
-            }
-            Profiler.EndSample();
+            // Profiler.BeginSample("SpatialHasing 1");
+            // for (var i = 0; i < _listItem.Count; i++)
+            // {
+            //     if (math.any(_listItem[i].Position != _positionBuffer[i].xyz))
+            //     {
+            //         var item = _listItem[i];
+            //         itemList.Add(item);
+            //     }
+            // }
+            // Profiler.EndSample();
             
             Profiler.BeginSample("SpatialHasing 2");
-            //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule().Complete();
-            int length = itemList.Length;
-            var inputDep = new JobHandle();
-            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = itemList }.Schedule(inputDep);
-            inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = itemList }.Schedule(length, 64, inputDep);
-            inputDep.Complete();
-            Profiler.EndSample();
+            new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
+            // int length = _listItem.Length;
+            // var inputDep = new JobHandle();
+            // inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule(inputDep);
+            // inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = _listItem }.Schedule(length, 64, inputDep);
+            // inputDep.Complete();
+            // Profiler.EndSample();
             
-            Profiler.BeginSample("SpatialHasing 3");
-            int delta = 0;
-            for (var i = 0; i < _listItem.Count; i++)
-            {
-                if (math.any(_listItem[i].Position != (float3)_positionBuffer[i].xyz))
-                {
-                    var item =itemList[delta++];
-                    item.Position = _positionBuffer[i].xyz;
-                    _listItem[i]  = item;
-                }
-            }
+            // Profiler.BeginSample("SpatialHasing 3");
+            // int delta = 0;
+            // for (var i = 0; i < _listItem.Count; i++)
+            // {
+            //     if (math.any(_listItem[i].Position != (float3)_positionBuffer[i].xyz))
+            //     {
+            //         var item =itemList[delta++];
+            //         item.Position = _positionBuffer[i].xyz;
+            //         _listItem[i]  = item;
+            //     }
+            // }
             Profiler.EndSample();
-            itemList.Dispose();
+            // itemList.Dispose();
         }
 
         private void OnDrawGizmos()
@@ -219,13 +222,19 @@ namespace HMH.ECS.SpatialHashing.Debug
             if (Application.isPlaying == false)
                 return;
 
+            // for (int i = 0; i < _listItem.Length; i++)
+            // {
+            //     Gizmos.color = new Color(0F, 1F, 0F, 0.3F);
+            //     Gizmos.DrawCube(_listItem[i].GetCenter(), _listItem[i].GetSize());
+            // }
+            
             if (Time.realtimeSinceStartup - _timeLastRefresh > _refreshTime)
                 RefreshLinks();
-
+            
             foreach (var l in _links)
             {
-                //DrawCell(l.Key);
-
+                DrawCell(l.Key);
+            
                 foreach (var item in l.Value)
                     DrawLink(l.Key, item);
             }
@@ -366,7 +375,7 @@ namespace HMH.ECS.SpatialHashing.Debug
         [SerializeField]
         private Transform _endRay;
 
-        private List<ItemTest>                   _listItem           = new List<ItemTest>();
+        private NativeList<ItemTest>                   _listItem           = new NativeList<ItemTest>(0, Allocator.Persistent);
         //private List<GameObject>                 _listItemGameobject = new List<GameObject>();
         private SpatialHash<ItemTest>            _spatialHashing;
         private float                            _timeLastRefresh = -99F;
@@ -380,7 +389,8 @@ namespace HMH.ECS.SpatialHashing.Debug
         {
             public int    ID;
             public float3 Position;
-
+            public float Size;
+            
             #region Implementation of IEquatable<ItemTest>
 
             /// <inheritdoc />
@@ -418,7 +428,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             /// <inheritdoc />
             public float3 GetSize()
             {
-                return new float3(1F);
+                return new float3(Size);
             }
 
             /// <inheritdoc />
