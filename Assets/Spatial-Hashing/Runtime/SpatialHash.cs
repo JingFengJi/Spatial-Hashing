@@ -574,7 +574,25 @@ namespace HMH.ECS.SpatialHashing
                 resultList.Add(_itemIDToItem[itemID]);
             }
         }
+        public int QueryCount(int3 chunkIndex)
+        {
+            var hash = Hash(chunkIndex);
 
+            int counter = 0;
+
+            if (_buckets.TryGetFirstValue(hash, out _, out var it))
+            {
+                ++counter;
+
+                while (_buckets.TryGetNextValue(out _, ref it))
+                    ++counter;
+            }
+
+            return counter;
+        }
+
+        #endregion
+        
         #region Raycast
         
         public bool Raycast(Ray ray)
@@ -649,26 +667,136 @@ namespace HMH.ECS.SpatialHashing
         }
 
         #endregion
-        
-        public int QueryCount(int3 chunkIndex)
+
+        #region Linecast
+
+        public bool Linecast(float3 start, float3 end)
         {
-            var hash = Hash(chunkIndex);
+            float3 direction = end - start;
+            return Raycast(start, direction, math.length(direction));
+        }
+        
+        public bool Linecast(float3 start, float3 end, out T item)
+        {
+            float3 direction = end - start;
+            return Raycast(start, direction, out item, math.length(direction));
+        }
+        
+        #endregion
 
-            int counter = 0;
+        #region Boxcast
 
-            if (_buckets.TryGetFirstValue(hash, out _, out var it))
-            {
-                ++counter;
+        public bool BoxCast(float3 center, float3 halfExtents, float3 direction)
+        {
+            return BoxCast(center, halfExtents, direction, Quaternion.identity, float.PositiveInfinity);
+        }
+        
+        public bool BoxCast(float3 center, float3 halfExtents, float3 direction, Quaternion orientation)
+        {
+            return BoxCast(center, halfExtents, direction, orientation, float.PositiveInfinity);
+        }
+        
+        public bool BoxCast(float3 center, float3 halfExtents, float3 direction, Quaternion orientation, float maxDistance)
+        {
+            //TODO:
+            return false;
+            
+        }
 
-                while (_buckets.TryGetNextValue(out _, ref it))
-                    ++counter;
-            }
 
-            return counter;
+        public bool BoxCast(float3 center, float3 halfExtents, float3 direction, out T hit, Quaternion orientation, float maxDistance)
+        {
+            //TODO:
+            hit = default;
+            return false;
+        }
+
+        public bool BoxCast(float3 center, float3 halfExtents, float3 direction, out T hit, Quaternion orientation)
+        {
+            return BoxCast(center, halfExtents, direction, out hit, orientation, float.PositiveInfinity);
+        }
+
+        public bool BoxCast(float3 center, float3 halfExtents, float3 direction, out T hit)
+        {
+            return BoxCast(center, halfExtents, direction, out hit, Quaternion.identity);
         }
 
         #endregion
 
+        #region Capsulecast
+
+        public bool CapsuleCast(float3 point1, float3 point2, float radius, float3 direction, float maxDistance)
+        {
+            //TODO:
+            return false;
+        }
+        
+        public bool CapsuleCast(float3 point1, float3 point2, float radius, float3 direction)
+        {
+            return CapsuleCast(point1, point2, radius, direction, float.PositiveInfinity);
+        }
+        
+        public bool CapsuleCast(float3 point1, float3 point2, float radius, float3 direction, out T hit, float maxDistance)
+        {
+            //TODO:
+            hit = default;
+            return false;
+        }
+        
+        public bool CapsuleCast(float3 point1, float3 point2, float radius, float3 direction, out T hit)
+        {
+            return CapsuleCast(point1, point2, radius, direction, out hit, float.PositiveInfinity);
+        }
+        
+        #endregion
+        
+        #region Spherecast
+        
+        public bool SphereCast(Vector3 origin, float radius, Vector3 direction, float maxDistance)
+        {
+            //TODO:
+            return false;
+        }
+        public bool SphereCast(Vector3 origin, float radius, Vector3 direction)
+        {
+            return SphereCast(origin, radius, direction, float.PositiveInfinity);
+        }
+        
+        public bool SphereCast(Ray ray, float radius, float maxDistance)
+        {
+            return SphereCast(ray.origin, radius, ray.direction, maxDistance);
+        }
+
+        public bool SphereCast(Ray ray, float radius)
+        {
+            return SphereCast(ray, radius, float.PositiveInfinity);
+        }
+        
+        
+        public bool SphereCast(Vector3 origin, float radius, Vector3 direction, out T hitInfo, float maxDistance)
+        {
+            //TODO:
+            hitInfo = default;
+            return false;
+        }
+        
+        public bool SphereCast(Vector3 origin, float radius, Vector3 direction, out T hitInfo)
+        {
+            return SphereCast(origin, radius, direction, out hitInfo, float.PositiveInfinity);
+        }
+        
+        public bool SphereCast(Ray ray, float radius, out T hitInfo, float maxDistance)
+        {
+            return SphereCast(ray.origin, radius, ray.direction, out hitInfo, maxDistance);
+        }
+
+        public bool SphereCast(Ray ray, float radius, out T hitInfo)
+        {
+            return SphereCast(ray, radius, out hitInfo, float.PositiveInfinity);
+        }
+        
+        #endregion
+        
         #region Hashing
 
         public static uint Hash(int3 cellIndex)
