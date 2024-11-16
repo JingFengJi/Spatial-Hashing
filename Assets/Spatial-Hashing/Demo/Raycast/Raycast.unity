@@ -224,7 +224,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 345785385}
-  - component: {fileID: 345785387}
+  - component: {fileID: 345785388}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -247,7 +247,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &345785387
+--- !u!114 &345785388
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -256,7 +256,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 345785383}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a8f2a8a19f53889429ccd26b003a757f, type: 3}
+  m_Script: {fileID: 11500000, guid: 254b0003ad6907243801b4bc6bce0be7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _refreshTime: 0.2
@@ -272,19 +272,73 @@ MonoBehaviour:
   _spawnCount: 10000
   instanceMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   instanceMaterial: {fileID: 2100000, guid: 81202b69f06cd82469d3067f95b68a31, type: 2}
-  _Move: 1
+  _Move: 0
   _DrawSpatialHashBoundGizmos: 0
   _DrawLinkGizmos: 0
-  _DrawQueryResultGizmos: 1
-  m_QuerryBound:
-    _center:
-      x: 0
-      y: 0
-      z: 0
-    _extents:
-      x: 10
-      y: 100
-      z: 10
+  _startRay: {fileID: 741662886}
+  _endRay: {fileID: 762736449}
+--- !u!1 &741662885
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 741662886}
+  m_Layer: 0
+  m_Name: StartRay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &741662886
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 741662885}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 29.421476, y: 33.55845, z: 28.479797}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &762736448
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 762736449}
+  m_Layer: 0
+  m_Name: EndRay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &762736449
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 762736448}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 29.421476, y: 10, z: 28.479797}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!850595691 &1573349146
 LightingSettings:
   m_ObjectHideFlags: 0
@@ -400,3 +454,5 @@ SceneRoots:
   - {fileID: 215603137}
   - {fileID: 345785385}
   - {fileID: 1581615178}
+  - {fileID: 741662886}
+  - {fileID: 762736449}
