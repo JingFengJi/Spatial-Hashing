@@ -282,9 +282,9 @@ MonoBehaviour:
       y: 0
       z: 0
     _extents:
-      x: 10
+      x: 30
       y: 100
-      z: 10
+      z: 30
 --- !u!850595691 &1573349146
 LightingSettings:
   m_ObjectHideFlags: 0

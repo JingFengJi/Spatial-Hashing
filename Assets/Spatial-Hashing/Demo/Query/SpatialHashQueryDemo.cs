@@ -203,15 +203,9 @@ namespace HMH.ECS.SpatialHashing.Debug
             
             Graphics.DrawMeshInstancedIndirect(instanceMesh, subMeshIndex, instanceMaterial, new UnityEngine.Bounds(Vector3.zero, new Vector3(100.0f, 100.0f, 100.0f)), argsBuffer);
             
-            Profiler.BeginSample("SpatialHash_Remove_Add");
-            // //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
-            int length = _listItem.Length;
-            var inputDep = new JobHandle();
-            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule(inputDep);
-            inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = _listItem }.Schedule(length, 64, inputDep);
-            inputDep.Complete();
+            Profiler.BeginSample("SpatialHash_Move");
+            new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
             Profiler.EndSample();
-            
             
             m_QueryResults.Clear();
             Profiler.BeginSample("Query");
