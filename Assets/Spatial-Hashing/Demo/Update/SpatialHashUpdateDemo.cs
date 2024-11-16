@@ -80,11 +80,7 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             for (int i = 0; i < _spawnCount; i++)
             {
-                float angle = Random.Range(0.0f, Mathf.PI * 2.0f);
-                float distance = Random.Range(20.0f, 100.0f);
-                float height = Random.Range(-20.0f, 20.0f);
                 float size = 1;
-                
                 _positionBuffer[i] = new float4(Random.insideUnitSphere * 100, size);
                 var item = new ItemTest()
                 {
@@ -196,13 +192,16 @@ namespace HMH.ECS.SpatialHashing.Debug
             
             Graphics.DrawMeshInstancedIndirect(instanceMesh, subMeshIndex, instanceMaterial, new UnityEngine.Bounds(Vector3.zero, new Vector3(100.0f, 100.0f, 100.0f)), argsBuffer);
             
+            Profiler.BeginSample("SpatialHash_Move");
+            new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
+            Profiler.EndSample();
+            
             Profiler.BeginSample("SpatialHash_Remove_Add");
-            // //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
-            int length = _listItem.Length;
-            var inputDep = new JobHandle();
-            inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule(inputDep);
-            inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = _listItem }.Schedule(length, 64, inputDep);
-            inputDep.Complete();
+            // int length = _listItem.Length;
+            // var inputDep = new JobHandle();
+            // inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule(inputDep);
+            // inputDep = new AddItemTestJob() { SpatialHash = _spatialHashing.ToConcurrent(), ItemList = _listItem }.Schedule(length, 64, inputDep);
+            // inputDep.Complete();
             Profiler.EndSample();
         }
 

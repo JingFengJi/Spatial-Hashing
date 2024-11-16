@@ -257,13 +257,17 @@ namespace HMH.ECS.SpatialHashing
             foreach (var oldVoxelPosition in _helpMoveHashMapOld)
             {
                 if (_helpMoveHashMapNew.Contains(oldVoxelPosition) == false)
+                {
                     RemoveInternal(oldVoxelPosition, itemID);
+                }
             }
 
-            foreach (var newVoxelPosition in _helpMoveHashMapOld)
+            foreach (var newVoxelPosition in _helpMoveHashMapNew)
             {
                 if (_helpMoveHashMapOld.Contains(newVoxelPosition) == false)
+                {
                     AddInternal(newVoxelPosition, itemID);
+                }
             }
         }
 

@@ -166,13 +166,13 @@ namespace HMH.ECS.SpatialHashing.Debug
         {
             m_FpsCounter.Update(Time.deltaTime, Time.unscaledDeltaTime);
             
-            // var UpdatePosJob = new UpdatePosJob()
-            // {
-            //     PositionBuffer = _positionBuffer,
-            //     Time = Time.realtimeSinceStartup,
-            //     ItemList = _listItem
-            // };
-            // UpdatePosJob.Schedule(_positionBuffer.Length, 64).Complete();
+            var UpdatePosJob = new UpdatePosJob()
+            {
+                PositionBuffer = _positionBuffer,
+                Time = Time.realtimeSinceStartup,
+                ItemList = _listItem
+            };
+            UpdatePosJob.Schedule(_positionBuffer.Length, 64).Complete();
             positionBuffer.SetData(_positionBuffer);
             instanceMaterial.SetBuffer("positionBuffer", positionBuffer);
             
@@ -194,7 +194,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             // Profiler.EndSample();
             
             // Profiler.BeginSample("SpatialHasing 2");
-            // //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
+            new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
             // int length = _listItem.Length;
             // var inputDep = new JobHandle();
             // inputDep= new RemoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule(inputDep);
@@ -216,28 +216,28 @@ namespace HMH.ECS.SpatialHashing.Debug
             // Profiler.EndSample();
             // itemList.Dispose();
             
-            m_Results.Clear();
-            Profiler.BeginSample("Query");
-            _spatialHashing.Query(m_QuerryBound, m_Results);
-            Profiler.EndSample();
+            // m_Results.Clear();
+            // Profiler.BeginSample("Query");
+            // _spatialHashing.Query(m_QuerryBound, m_Results);
+            // Profiler.EndSample();
             
-            Profiler.BeginSample("RayCast");
-            var startRayPosition = _startRay.position;
-            var startCellBound   = new Bounds(_spatialHashing.GetPositionVoxel(_spatialHashing.GetIndexVoxel(startRayPosition), true), _spatialHashing.CellSize);
-
-            // Gizmos.color = Color.yellow;
-            // Gizmos.DrawLine(startRayPosition, _endRay.position);
-
-            //ItemTest hit = new ItemTest();
-            var      ray = new Ray(startRayPosition, _endRay.position - startRayPosition);
-            
-            if (_spatialHashing.Raycast(ray, out m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
-            {
-                // Gizmos.color = Color.blue;
-                // Gizmos.DrawCube(hit.GetCenter(), hit.GetSize());
-            }
-            
-            Profiler.EndSample();
+            // Profiler.BeginSample("RayCast");
+            // var startRayPosition = _startRay.position;
+            // var startCellBound   = new Bounds(_spatialHashing.GetPositionVoxel(_spatialHashing.GetIndexVoxel(startRayPosition), true), _spatialHashing.CellSize);
+            //
+            // // Gizmos.color = Color.yellow;
+            // // Gizmos.DrawLine(startRayPosition, _endRay.position);
+            //
+            // //ItemTest hit = new ItemTest();
+            // var      ray = new Ray(startRayPosition, _endRay.position - startRayPosition);
+            //
+            // if (_spatialHashing.Raycast(ray, out m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
+            // {
+            //     // Gizmos.color = Color.blue;
+            //     // Gizmos.DrawCube(hit.GetCenter(), hit.GetSize());
+            // }
+            //
+            // Profiler.EndSample();
         }
         
         [SerializeField]
@@ -269,16 +269,16 @@ namespace HMH.ECS.SpatialHashing.Debug
                 }
             }
             
-            // if (Time.realtimeSinceStartup - _timeLastRefresh > _refreshTime)
-            //     RefreshLinks();
-            //
-            // foreach (var l in _links)
-            // {
-            //     DrawCell(l.Key);
-            //
-            //     foreach (var item in l.Value)
-            //         DrawLink(l.Key, item);
-            // }
+            if (Time.realtimeSinceStartup - _timeLastRefresh > _refreshTime)
+                RefreshLinks();
+            
+            foreach (var l in _links)
+            {
+                DrawCell(l.Key);
+            
+                foreach (var item in l.Value)
+                    DrawLink(l.Key, item);
+            }
 
             if (_useRaycast)
             {
