@@ -230,9 +230,8 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             //ItemTest hit = new ItemTest();
             var      ray = new Ray(startRayPosition, _endRay.position - startRayPosition);
-
-            m_RayacstResult = new ItemTest();
-            if (_spatialHashing.RayCast(ray, ref m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
+            
+            if (_spatialHashing.Raycast(ray, out m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
             {
                 // Gizmos.color = Color.blue;
                 // Gizmos.DrawCube(hit.GetCenter(), hit.GetSize());

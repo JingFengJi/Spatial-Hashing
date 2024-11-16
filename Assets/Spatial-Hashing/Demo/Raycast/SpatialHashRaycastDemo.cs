@@ -208,10 +208,11 @@ namespace HMH.ECS.SpatialHashing.Debug
             Profiler.EndSample();
             
             
+            
             Profiler.BeginSample("RayCast");
             var ray = new Ray(_startRay.position, _endRay.position - _startRay.position);
             m_RayacstResult = new ItemTest();
-            if (_spatialHashing.RayCast(ray, ref m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
+            if (_spatialHashing.Raycast(ray, out m_RayacstResult, (_endRay.position - _startRay.position).magnitude))
             {
                 
             }

@@ -575,26 +575,81 @@ namespace HMH.ECS.SpatialHashing
             }
         }
 
-        public bool RayCast(Ray ray, ref T item, float length = 99999F)
+        #region Raycast
+        
+        public bool Raycast(Ray ray)
+        {
+            return Raycast(ray.origin, ray.direction);
+        }
+        
+        public bool Raycast(Ray ray, float maxDistance)
+        {
+            return Raycast(ray.origin, ray.direction, maxDistance);
+        }
+        
+        public bool Raycast(float3 origin, float3 direction)
+        {
+            return Raycast(origin, direction, float.PositiveInfinity);
+        }
+        
+        public bool Raycast(float3 origin, float3 direction, float maxDistance)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
-
-            _data -> HasHit = false;
-
-            _data -> RayOrigin    = ray.origin;
-            _data -> RayDirection = ray.direction;
-
-            _voxelRay.RayCast(ref this, _data -> RayOrigin, _data -> RayDirection, length);
-
-            if (_data -> HasHit == false)
+            float magnitude = math.length(direction);
+            if(magnitude <= 1.401298464324817E-45)
                 return false;
+            float3 normalizedDirection = direction / magnitude;
+            _data -> HasHit = false;
+            _data -> RayOrigin    = origin;
+            _data -> RayDirection = normalizedDirection;
+            _voxelRay.RayCast(ref this, _data -> RayOrigin, _data -> RayDirection, maxDistance);
+            return _data -> HasHit;
+        }
 
+        public bool Raycast(Ray ray, out T item)
+        {
+            return Raycast(ray.origin, ray.direction, out item, float.PositiveInfinity);
+        }
+        
+        public bool Raycast(Ray ray, out T item, float maxDistance)
+        {
+            return Raycast(ray.origin, ray.direction, out item, maxDistance);
+        }
+        
+        public bool Raycast(float3 origin, float3 direction, out T item)
+        {
+            return Raycast(origin, direction, out item, float.PositiveInfinity);
+        }
+        
+        public bool Raycast(float3 origin, float3 direction, out T item, float maxDistance)
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            float magnitude = math.length(direction);
+            if (magnitude <= 1.401298464324817E-45)
+            {
+                item = default;
+                return false;
+            }
+            float3 normalizedDirection = direction / magnitude;
+            _data -> HasHit = false;
+            _data -> RayOrigin    = origin;
+            _data -> RayDirection = direction;
+            _voxelRay.RayCast(ref this, _data -> RayOrigin, _data -> RayDirection, maxDistance);
+            if (_data->HasHit == false)
+            {
+                item = default;
+                return false;
+            }
             item = _itemIDToItem[_rayHitValue];
             return true;
         }
 
+        #endregion
+        
         public int QueryCount(int3 chunkIndex)
         {
             var hash = Hash(chunkIndex);

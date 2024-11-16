@@ -56,10 +56,8 @@ namespace HMH.ECS.SpatialHashing
 
                 Gizmos.color = Color.yellow;
                 Gizmos.DrawLine(startRayPosition, DebugRay.GetPoint(raySize));
-
-                T hit = default;
-
-                if (_spatialHash.RayCast(DebugRay, ref hit))
+                
+                if (_spatialHash.Raycast(DebugRay, out T hit))
                 {
                     Gizmos.color = Color.blue;
                     Gizmos.DrawCube(hit.GetCenter(), hit.GetSize());
