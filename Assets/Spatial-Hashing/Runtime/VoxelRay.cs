@@ -4,6 +4,92 @@ using UnityEngine.Assertions;
 
 namespace HMH.ECS.SpatialHashing
 {
+    public struct VoxelRayIterator
+    {
+        public int3 Current;       // 当前体素索引
+        private int3 _step;        // 步进方向（-1 或 1）
+        private float3 _tMax;      // 射线到达下一个体素边界的距离
+        private float3 _tDelta;    // 射线穿越一个体素所需的距离
+        private int3 _voxelIndex;  // 当前体素索引（私有）
+        private int3 _gridSize;    // 网格大小（体素数量）
+        private float3 _origin;    // 射线起点
+        private float3 _direction; // 射线方向（归一化）
+        private float3 _voxelSize; // 单个体素的大小
+        private float3 _gridOrigin;// 网格的起点（最小边界）
+        private float _maxDistance;// 射线的最大距离
+
+        // 构造函数
+        public VoxelRayIterator(float3 origin, float3 direction, float3 voxelSize, float3 gridOrigin, int3 gridSize)
+        {
+            // 初始化成员变量
+            _origin = origin;
+            _direction = direction;
+            _voxelSize = voxelSize;
+            _gridOrigin = gridOrigin;
+            _gridSize = gridSize;
+            _maxDistance = float.PositiveInfinity;
+
+            // 计算初始体素索引
+            float3 relativeOrigin = (origin - gridOrigin) / voxelSize;
+            _voxelIndex = (int3)math.floor(relativeOrigin);
+            Current = _voxelIndex;
+
+            // 计算步长和初始 tMax、tDelta
+            _step = new int3(
+                _direction.x > 0 ? 1 : (_direction.x < 0 ? -1 : 0),
+                _direction.y > 0 ? 1 : (_direction.y < 0 ? -1 : 0),
+                _direction.z > 0 ? 1 : (_direction.z < 0 ? -1 : 0)
+            );
+
+            float3 nextVoxelBoundary = (_voxelIndex + (_step + 1) / 2) * voxelSize + gridOrigin;
+
+            _tMax = new float3(
+                _direction.x != 0 ? (nextVoxelBoundary.x - origin.x) / _direction.x : float.PositiveInfinity,
+                _direction.y != 0 ? (nextVoxelBoundary.y - origin.y) / _direction.y : float.PositiveInfinity,
+                _direction.z != 0 ? (nextVoxelBoundary.z - origin.z) / _direction.z : float.PositiveInfinity
+            );
+
+            _tDelta = new float3(
+                _direction.x != 0 ? voxelSize.x / math.abs(_direction.x) : float.PositiveInfinity,
+                _direction.y != 0 ? voxelSize.y / math.abs(_direction.y) : float.PositiveInfinity,
+                _direction.z != 0 ? voxelSize.z / math.abs(_direction.z) : float.PositiveInfinity
+            );
+        }
+
+        // MoveNext 方法
+        public bool MoveNext(float maxDistance)
+        {
+            // 实现迭代逻辑
+            // 检查是否超过最大距离
+            if (math.min(_tMax.x, math.min(_tMax.y, _tMax.z)) > maxDistance)
+                return false;
+
+            if (_tMax.x < _tMax.y && _tMax.x < _tMax.z)
+            {
+                _voxelIndex.x += _step.x;
+                _tMax.x += _tDelta.x;
+            }
+            else if (_tMax.y < _tMax.z)
+            {
+                _voxelIndex.y += _step.y;
+                _tMax.y += _tDelta.y;
+            }
+            else
+            {
+                _voxelIndex.z += _step.z;
+                _tMax.z += _tDelta.z;
+            }
+
+            Current = _voxelIndex;
+
+            // 检查体素是否在网格范围内
+            if (math.any(_voxelIndex < 0) || math.any(_voxelIndex >= _gridSize))
+                return false;
+
+            return true;
+        }
+    }
+    
     /// <summary>
     /// Ray for ray casting inside a voxel world. Each voxel is considered as a cube within this ray. A ray consists of a starting position, a direction and a length.
     /// Adaptation from https://www.gamedev.net/blogs/entry/2265248-voxel-traversal-algorithm-ray-casting/

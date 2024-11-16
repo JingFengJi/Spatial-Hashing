@@ -752,6 +752,137 @@ namespace HMH.ECS.SpatialHashing
         
         #region Spherecast
         
+        private bool SphereAABBIntersect(float3 sphereCenter, float sphereRadius, Bounds aabb, out float distance)
+        {
+            // 计算 AABB 到球体中心的最近点
+            float3 closestPoint = math.clamp(sphereCenter, aabb.Min, aabb.Max);
+
+            // 计算距离平方
+            float distSq = math.lengthsq(sphereCenter - closestPoint);
+
+            // 比较距离平方和半径平方
+            bool intersects = distSq <= (sphereRadius * sphereRadius);
+
+            distance = intersects ? math.sqrt(distSq) : float.PositiveInfinity;
+
+            return intersects;
+        }
+
+        public bool SphereCastAll(float3 origin, float3 direction, float radius, NativeList<T> hitInfo, float maxDistance = float.PositiveInfinity)
+        {
+            bool hasHit = false;
+            // 归一化方向
+            direction = math.normalize(direction);
+            // 初始化 Voxel Raycasting
+            VoxelRayIterator voxelRay = new VoxelRayIterator(origin, direction, _data->CellSize, _data->WorldBoundsMin, _data->CellCount);
+            while (voxelRay.MoveNext(maxDistance))
+            {
+                int3 currentVoxel = voxelRay.Current;
+                // 检查体素是否在世界范围内
+                if (math.any(currentVoxel < 0) || math.any(currentVoxel >= _data->CellCount))
+                    continue;
+                uint hash = Hash(currentVoxel);
+                float3 voxelCenterPos = GetPositionVoxel(currentVoxel, true);
+                // 获取该体素中的对象
+                if (_buckets.TryGetFirstValue(hash, out var itemID, out var it))
+                {
+                    do
+                    {
+                        // 获取对象的包围盒
+                        if (_itemIDToBounds.TryGetValue(itemID, out var bounds))
+                        {
+                            // 检查球体是否与包围盒相交
+                            if (SphereAABBSweep(origin, radius, direction, maxDistance, bounds, out float hitDistance))
+                            {
+                                hasHit = true;
+                                // 获取对象实例
+                                if (_itemIDToItem.TryGetValue(itemID, out var item))
+                                {
+                                    hitInfo.Add(item);
+                                }
+                            }
+                        }
+                    } while (_buckets.TryGetNextValue(out itemID, ref it));
+                }
+            }
+            return hasHit;
+        }
+        
+        public bool SphereCast(float3 origin, float3 direction, float radius, out T hitInfo, float maxDistance = float.PositiveInfinity)
+        {
+            hitInfo = default;
+            bool hasHit = false;
+            float closestHitDistance = maxDistance;
+            // 归一化方向
+            direction = math.normalize(direction);
+            // 初始化 Voxel Raycasting
+            VoxelRayIterator voxelRay = new VoxelRayIterator(origin, direction, _data->CellSize, _data->WorldBoundsMin, _data->CellCount);
+            while (voxelRay.MoveNext(maxDistance))
+            {
+                int3 currentVoxel = voxelRay.Current;
+                // 检查体素是否在世界范围内
+                if (math.any(currentVoxel < 0) || math.any(currentVoxel >= _data->CellCount))
+                    continue;
+                uint hash = Hash(currentVoxel);
+                float3 voxelCenterPos = GetPositionVoxel(currentVoxel, true);
+                // 获取该体素中的对象
+                if (_buckets.TryGetFirstValue(hash, out var itemID, out var it))
+                {
+                    do
+                    {
+                        // 获取对象的包围盒
+                        if (_itemIDToBounds.TryGetValue(itemID, out var bounds))
+                        {
+                            // 检查球体是否与包围盒相交
+                            if (SphereAABBSweep(origin, radius, direction, closestHitDistance, bounds, out float hitDistance))
+                            {
+                                if (hitDistance < closestHitDistance)
+                                {
+                                    closestHitDistance = hitDistance;
+                                    hasHit = true;
+                                    // 获取对象实例
+                                    if (_itemIDToItem.TryGetValue(itemID, out var item))
+                                    {
+                                        hitInfo = item;
+                                    }
+                                }
+                            }
+                        }
+                    } while (_buckets.TryGetNextValue(out itemID, ref it));
+                }
+            }
+            return hasHit;
+        }
+        
+        private bool SphereAABBSweep(float3 sphereOrigin, float sphereRadius, float3 direction, float maxDistance, Bounds bounds, out float hitDistance)
+        {
+            hitDistance = 0f;
+            direction = math.normalize(direction);
+
+            // 扩展 AABB，使其考虑球体的半径
+            Bounds expandedBounds = bounds;
+            expandedBounds.Expand(sphereRadius * 2f); // 扩展大小为球体直径
+            
+            // 2. 执行射线与扩展后的 AABB 的相交测试
+            float3 enterPoint;
+            bool hasIntersection = expandedBounds.GetEnterPositionAABB(sphereOrigin, direction, maxDistance, out enterPoint);
+
+            if (hasIntersection)
+            {
+                // 3. 计算碰撞距离
+                hitDistance = math.length(enterPoint - sphereOrigin);
+
+                // 判断碰撞距离是否在最大距离内
+                if (hitDistance <= maxDistance)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
         public bool SphereCast(Vector3 origin, float radius, Vector3 direction, float maxDistance)
         {
             //TODO:
@@ -992,6 +1123,17 @@ namespace HMH.ECS.SpatialHashing
                 AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
                 return _data -> WorldBounds;
+            }
+        }
+        
+        public float3 WorldBoundsMin
+        {
+            get
+            {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+                return _data -> WorldBoundsMin;
             }
         }
 
