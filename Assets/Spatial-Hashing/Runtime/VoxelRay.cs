@@ -234,4 +234,13 @@ namespace HMH.ECS.SpatialHashing
         float3 GetPositionVoxel(int3 index, bool center);
         float3 CellSize { get; }
     }
+
+    public interface IRay2D
+    {
+        bool OnTraversingVoxel(int2 voxelIndex);
+
+        int2 GetIndexVoxel(float2    position);
+        float2 GetPositionVoxel(int2 index, bool center);
+        float2 CellSize { get; }
+    }
 }
