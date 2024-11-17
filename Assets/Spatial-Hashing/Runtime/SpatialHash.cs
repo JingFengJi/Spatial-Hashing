@@ -628,6 +628,83 @@ namespace HMH.ECS.SpatialHashing
             return counter;
         }
 
+        public void SphereQuery(float3 sphereCenter, float radius, NativeList<T> resultList)
+        {
+            Assert.IsTrue(resultList.IsCreated);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            Bounds queryBounds = new Bounds(sphereCenter, new float3(radius * 2f));
+            queryBounds.Clamp(_data->WorldBounds);
+            CalculateStartEndIterationInternal(_data, queryBounds, out int3 start, out int3 end);
+            var hashMapUnic = new NativeHashSet<int>(64, Allocator.Temp);
+            var hashPosition = new int3(0);
+            for (int x = start.x; x < end.x; ++x)
+            {
+                hashPosition.x = x;
+                for (int y = start.y; y < end.y; ++y)
+                {
+                    hashPosition.y = y;
+                    for (int z = start.z; z < end.z; ++z)
+                    {
+                        hashPosition.z = z;
+                        uint hash = Hash(hashPosition);
+                        if (_buckets.TryGetFirstValue(hash, out var itemID, out var it))
+                        {
+                            do
+                            {
+                                hashMapUnic.Add(itemID);
+                            }
+                            while (_buckets.TryGetNextValue(out itemID, ref it));
+                        }
+                    }
+                }
+            }
+            ExtractItemsWithinSphereFromHashMap(hashMapUnic, sphereCenter, radius, resultList);
+            hashMapUnic.Dispose();
+        }
+        
+        private void ExtractItemsWithinSphereFromHashMap(NativeHashSet<int> hashMapUnic, float3 sphereCenter, float radius, NativeList<T> resultList)
+        {
+            var itemIDs = hashMapUnic.ToNativeArray(Allocator.Temp);
+            for (int i = 0; i < itemIDs.Length; ++i)
+            {
+                int itemID = itemIDs[i];
+                if (_itemIDToBounds.TryGetValue(itemID, out var itemBounds))
+                {
+                    if (BoundsIntersectsSphere(itemBounds, sphereCenter, radius))
+                    {
+                        if (_itemIDToItem.TryGetValue(itemID, out var item))
+                        {
+                            resultList.Add(item);
+                        }
+                    }
+                }
+            }
+            itemIDs.Dispose();
+        }
+        
+        private bool BoundsIntersectsSphere(Bounds bounds, float3 sphereCenter, float radius)
+        {
+            float sqDistance = 0f;
+            float3 min = bounds.Min;
+            float3 max = bounds.Max;
+            for (int i = 0; i < 3; i++)
+            {
+                float v = sphereCenter[i];
+                if (v < min[i])
+                {
+                    sqDistance += (min[i] - v) * (min[i] - v);
+                }
+                else if (v > max[i])
+                {
+                    sqDistance += (v - max[i]) * (v - max[i]);
+                }
+            }
+            return sqDistance <= radius * radius;
+        }
+
+        
         #endregion
         
         #region Raycast
