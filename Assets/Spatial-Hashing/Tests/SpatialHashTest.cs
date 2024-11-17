@@ -146,7 +146,7 @@ namespace HMH.ECS.SpatialHashing.Test
             var results = new NativeList<Item>(5, Allocator.TempJob);
             var bounds  = new Bounds(item.GetCenter(), item.GetSize());
 
-            sh.CalculStartEndIteration(bounds, out var start, out var end);
+            sh.CalculateStartEndIteration(bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 

@@ -41,7 +41,7 @@ namespace HMH.ECS.SpatialHashing.Test
             var results = new NativeList<Item>(5, Allocator.TempJob);
             var bounds  = new Bounds(item.GetCenter(), item.GetSize());
 
-            sh.CalculStartEndIteration(bounds, out var start, out var end);
+            sh.CalculateStartEndIteration(bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -97,7 +97,7 @@ namespace HMH.ECS.SpatialHashing.Test
             var results = new NativeList<Item>(5, Allocator.TempJob);
             var bounds  = new Bounds(item.GetCenter(), item.GetSize());
 
-            sh.CalculStartEndIteration(bounds, out var start, out var end);
+            sh.CalculateStartEndIteration(bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -168,7 +168,7 @@ namespace HMH.ECS.SpatialHashing.Test
             var results = new NativeList<Item>(5, Allocator.TempJob);
             var bounds  = new Bounds(item.GetCenter(), item.GetSize());
 
-            sh.CalculStartEndIteration(bounds, out var start, out var end);
+            sh.CalculateStartEndIteration(bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -221,7 +221,7 @@ namespace HMH.ECS.SpatialHashing.Test
             results = new NativeList<Item>(5, Allocator.TempJob);
             bounds  = new Bounds(item.GetCenter(), item.GetSize());
 
-            sh.CalculStartEndIteration(bounds, out start, out end);
+            sh.CalculateStartEndIteration(bounds, out start, out end);
 
             hashPosition = new int3(0F);
 

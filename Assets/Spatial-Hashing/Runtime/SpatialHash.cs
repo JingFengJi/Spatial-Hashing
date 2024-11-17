@@ -94,7 +94,7 @@ namespace HMH.ECS.SpatialHashing
             _itemIDToBounds.TryAdd(itemID, bounds);
             _itemIDToItem.TryAdd(itemID, item);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -130,7 +130,7 @@ namespace HMH.ECS.SpatialHashing
             _itemIDToBounds[itemID] = bounds;
             _itemIDToItem[itemID]   = item;
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -170,7 +170,7 @@ namespace HMH.ECS.SpatialHashing
             _itemIDToBounds.Remove(itemID);
             _itemIDToItem.Remove(itemID);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -205,7 +205,7 @@ namespace HMH.ECS.SpatialHashing
 
             Assert.IsTrue(success);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -233,6 +233,10 @@ namespace HMH.ECS.SpatialHashing
             _buckets.Remove(Hash(voxelPosition), itemID);
         }
 
+        /// <summary>
+        /// 移动对象
+        /// </summary>
+        /// <param name="item"></param>
         public void Move(T item)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -249,11 +253,15 @@ namespace HMH.ECS.SpatialHashing
             _itemIDToItem.Remove(itemID);
             _itemIDToItem.TryAdd(itemID, item);
 
+            //先根据旧的包围盒计算出旧的体素位置
             _helpMoveHashMapOld.Clear();
             SetVoxelIndexForBounds(_data, oldBounds, _helpMoveHashMapOld);
+            
+            //根据新的包围盒计算出新的体素位置
             _helpMoveHashMapNew.Clear();
             SetVoxelIndexForBounds(_data, newBounds, _helpMoveHashMapNew);
 
+            //遍历旧的体素位置，如果新的体素位置不包含旧的体素位置，则删除
             foreach (var oldVoxelPosition in _helpMoveHashMapOld)
             {
                 if (_helpMoveHashMapNew.Contains(oldVoxelPosition) == false)
@@ -262,6 +270,7 @@ namespace HMH.ECS.SpatialHashing
                 }
             }
 
+            //遍历新的体素位置，如果旧的体素位置不包含新的体素位置，则添加
             foreach (var newVoxelPosition in _helpMoveHashMapNew)
             {
                 if (_helpMoveHashMapOld.Contains(newVoxelPosition) == false)
@@ -287,10 +296,17 @@ namespace HMH.ECS.SpatialHashing
             _itemIDToBounds.Clear();
         }
 
+        /// <summary>
+        /// 根据包围盒计算出体素位置
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="bounds"></param>
+        /// <param name="collection"></param>
+        /// <exception cref="Exception"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void SetVoxelIndexForBounds(SpatialHashData* data, Bounds bounds, NativeParallelHashSet<int3> collection)
         {
-            CalculStartEndIterationInternal(data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(data, bounds, out var start, out var end);
 
             var position = new int3(0F);
 
@@ -321,18 +337,29 @@ namespace HMH.ECS.SpatialHashing
             }
         }
 
-        public void CalculStartEndIteration(Bounds bounds, out int3 start, out int3 end)
+        /// <summary>
+        /// 根据包围盒计算体素位置的Start和End，分别是包围盒的最小和最大体素位置
+        /// </summary>
+        /// <param name="bounds"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        public void CalculateStartEndIteration(Bounds bounds, out int3 start, out int3 end)
         {
-            CalculStartEndIterationInternal(_data, bounds, out start, out end);
+            CalculateStartEndIterationInternal(_data, bounds, out start, out end);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculStartEndIterationInternal(SpatialHashData* data, Bounds bounds, out int3 start, out int3 end)
+        private static void CalculateStartEndIterationInternal(SpatialHashData* data, Bounds bounds, out int3 start, out int3 end)
         {
             start = ((bounds.Min - data -> WorldBoundsMin) / data -> CellSize).FloorToInt();
             end   = ((bounds.Max - data -> WorldBoundsMin) / data -> CellSize).CeilToInt();
         }
 
+        /// <summary>
+        /// 根据id获取对象
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public T GetObject(int index)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -394,7 +421,7 @@ namespace HMH.ECS.SpatialHashing
 #endif
             bounds.Clamp(_data -> WorldBounds);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashMapUnic  = new NativeHashSet<int>(64, Allocator.Temp);
             var hashPosition = new int3(0F);
@@ -435,7 +462,7 @@ namespace HMH.ECS.SpatialHashing
 #endif
             bounds.Clamp(_data -> WorldBounds);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -468,7 +495,7 @@ namespace HMH.ECS.SpatialHashing
             var bounds = TransformBounds(in obbBounds, in rotation);
             bounds.Clamp(_data -> WorldBounds);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashMapUnic = new NativeHashSet<int>(64, Allocator.Temp);
 
@@ -524,7 +551,7 @@ namespace HMH.ECS.SpatialHashing
             var bounds = TransformBounds(in obbBounds, in rotation);
             bounds.Clamp(_data -> WorldBounds);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -578,6 +605,12 @@ namespace HMH.ECS.SpatialHashing
                 resultList.Add(_itemIDToItem[itemID]);
             }
         }
+        
+        /// <summary>
+        /// 查找指定体素中的对象数量
+        /// </summary>
+        /// <param name="chunkIndex"></param>
+        /// <returns></returns>
         public int QueryCount(int3 chunkIndex)
         {
             var hash = Hash(chunkIndex);
@@ -950,6 +983,12 @@ namespace HMH.ECS.SpatialHashing
             return (int)math.ceil(deltaSize.x) * (int)math.ceil(deltaSize.y) * (int)math.ceil(deltaSize.z);
         }
 
+        /// <summary>
+        /// 获取体素的位置
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="center"></param>
+        /// <returns></returns>
         public float3 GetPositionVoxel(int3 index, bool center)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -963,6 +1002,11 @@ namespace HMH.ECS.SpatialHashing
             return pos;
         }
 
+        /// <summary>
+        /// 根据坐标获取体素索引
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
         public int3 GetIndexVoxel(float3 position)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -1014,7 +1058,7 @@ namespace HMH.ECS.SpatialHashing
 
             bounds.Clamp(_data -> WorldBounds);
 
-            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -1179,7 +1223,7 @@ namespace HMH.ECS.SpatialHashing
                 if (_itemIDToBounds.TryAdd(itemID, bounds) == false || _itemIDToItem.TryAdd(itemID, item) == false)
                     return false;
 
-                CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+                CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
                 var hashPosition = new int3(0F);
 
@@ -1225,7 +1269,7 @@ namespace HMH.ECS.SpatialHashing
                 if (_itemIDToBounds.TryAdd(itemID, bounds) == false || _itemIDToItem.TryAdd(itemID, item) == false)
                     return;
 
-                CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+                CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
 
                 var hashPosition = new int3(0F);
 
