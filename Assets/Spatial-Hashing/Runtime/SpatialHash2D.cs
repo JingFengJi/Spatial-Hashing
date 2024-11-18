@@ -482,6 +482,42 @@ namespace HMH.ECS.SpatialHashing
             // 释放临时的 HashSet
             processedItemIDs.Dispose();
         }
+
+        /// <summary>
+        /// 扇形搜索最近的对象
+        /// </summary>
+        /// <param name="origin"></param>
+        /// <param name="direction"></param>
+        /// <param name="angle"></param>
+        /// <param name="radius"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        public bool SectorNearestQuery(float2 origin, float2 direction, float angle, float radius, out T result)
+        {
+            NativeList<T> resultList = new NativeList<T>(32, Allocator.Temp);
+            SectorQuery(origin, direction, angle, radius, resultList);
+            float minDis = -1;
+            result = default;
+            for (int i = 0; i < resultList.Length; i++)
+            {
+                if (minDis < 0)
+                {
+                    minDis = math.distancesq(resultList[i].GetCenter(), origin);
+                    result = resultList[i];
+                }
+                else
+                {
+                    float dis = math.distancesq(resultList[i].GetCenter(), origin);
+                    if (dis < minDis)
+                    {
+                        minDis = dis;
+                        result = resultList[i];
+                    }
+                }
+            }
+            resultList.Dispose();
+            return minDis >= 0;
+        }
         
         /// <summary>
         /// 圆形搜索
