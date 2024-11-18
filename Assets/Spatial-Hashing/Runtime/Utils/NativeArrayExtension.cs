@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace HMH.ECS
+namespace SpatialHashing.Utils 
 {
     public static class NativeArrayExtension
     {

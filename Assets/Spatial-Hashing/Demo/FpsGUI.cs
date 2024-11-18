@@ -1,7 +1,6 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace HMH.ECS.SpatialHashing.Debug
+namespace SpatialHashing.Demo
 {
     public class FpsGUI : MonoBehaviour
     {

@@ -3,7 +3,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace HMH.ECS.SpatialHashing.Debug
+namespace SpatialHashing.Demo
 {
     public class HashMapVisualOBBDebug : MonoBehaviour
     {

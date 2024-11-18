@@ -2,21 +2,17 @@
 using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using SpatialHashing.Utils;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using UnityEngine;
 using UnityEngine.Assertions;
 
-namespace HMH.ECS.SpatialHashing
+namespace SpatialHashing
 {
     public unsafe struct SpatialHash2D<T> : IDisposable where T : unmanaged, ISpatialHashing2DItem<T>
     {
         #region Variables
-        
-        private static readonly float3 Forward = new float3(0F, 0F, 1F);
-        private static readonly float3 Up     = new float3(0F, 1F, 0F);
-        private static readonly float3 Right  = new float3(1F, 0F, 0F);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
         // ReSharper disable InconsistentNaming

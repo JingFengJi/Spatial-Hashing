@@ -3,13 +3,14 @@ using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+using SpatialHashing.Utils;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
 
-namespace HMH.ECS.SpatialHashing
+namespace SpatialHashing
 {
     /// <summary>
     /// Spatial hashing logic. Have to be assign by ref !
@@ -672,7 +673,7 @@ namespace HMH.ECS.SpatialHashing
                 int itemID = itemIDs[i];
                 if (_itemIDToBounds.TryGetValue(itemID, out var itemBounds))
                 {
-                    if (BoundsIntersectsSphere(itemBounds, sphereCenter, radius))
+                    if (MathUtils.BoundsIntersectsSphere(itemBounds, sphereCenter, radius))
                     {
                         if (_itemIDToItem.TryGetValue(itemID, out var item))
                         {
@@ -683,27 +684,6 @@ namespace HMH.ECS.SpatialHashing
             }
             itemIDs.Dispose();
         }
-        
-        private bool BoundsIntersectsSphere(Bounds bounds, float3 sphereCenter, float radius)
-        {
-            float sqDistance = 0f;
-            float3 min = bounds.Min;
-            float3 max = bounds.Max;
-            for (int i = 0; i < 3; i++)
-            {
-                float v = sphereCenter[i];
-                if (v < min[i])
-                {
-                    sqDistance += (min[i] - v) * (min[i] - v);
-                }
-                else if (v > max[i])
-                {
-                    sqDistance += (v - max[i]) * (v - max[i]);
-                }
-            }
-            return sqDistance <= radius * radius;
-        }
-
         
         #endregion
         

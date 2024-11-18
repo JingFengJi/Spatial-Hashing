@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using SpatialHashing.Utils;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace HMH.ECS.SpatialHashing
+namespace SpatialHashing
 {
     [Serializable]
     public struct Bounds2D : IEquatable<Bounds2D>

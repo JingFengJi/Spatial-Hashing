@@ -9,8 +9,10 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Profiling;
 using Random = UnityEngine.Random;
+using SpatialHashing.Utils;
+using SpatialHashing.Utils;
 
-namespace HMH.ECS.SpatialHashing.Debug
+namespace SpatialHashing.Demo
 {
     public class HashMapVisualDebug : MonoBehaviour, IRay
     {

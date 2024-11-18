@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using SpatialHashing.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -10,7 +11,7 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using Random = UnityEngine.Random;
 
-namespace HMH.ECS.SpatialHashing.Debug
+namespace SpatialHashing.Demo
 {
     public class SpatialHash2DUpdateDemo : MonoBehaviour, IRay2D
     {
@@ -220,7 +221,14 @@ namespace HMH.ECS.SpatialHashing.Debug
             Profiler.BeginSample("Query");
             //_spatialHashing.CircleQuery(new float2(m_CircleQueryTransform.position.x, m_CircleQueryTransform.position.y), m_CircleQueryRadius, m_QueryResults);
             
-            _spatialHashing.SectorQuery(new Vector2(m_SectorOrigin.position.x, m_SectorOrigin.position.y), m_SectorDirection, m_SectorAngle, m_SectorRadius, m_QueryResults);
+            //_spatialHashing.SectorQuery(new Vector2(m_SectorOrigin.position.x, m_SectorOrigin.position.y), m_SectorDirection, m_SectorAngle, m_SectorRadius, m_QueryResults);
+
+            if (_spatialHashing.SectorNearestQuery(new Vector2(m_SectorOrigin.position.x, m_SectorOrigin.position.y),
+                    m_SectorDirection, m_SectorAngle, m_SectorRadius, out var nearest))
+            {
+                m_QueryResults.Add(nearest);
+            }
+            
             Profiler.EndSample();
         }
 

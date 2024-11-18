@@ -1,4 +1,4 @@
-﻿namespace HMH.ECS.SpatialHashing.Debug
+﻿namespace SpatialHashing.Demo
 {
     public class FpsCounter
     {

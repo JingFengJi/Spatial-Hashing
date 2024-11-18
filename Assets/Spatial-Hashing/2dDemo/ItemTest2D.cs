@@ -1,8 +1,7 @@
-﻿using HMH.ECS.SpatialHashing;
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 
-namespace HMH.ECS.SpatialHashing.Debug
+namespace SpatialHashing.Demo
 {
     
     public struct ItemTest2D : ISpatialHashing2DItem<ItemTest2D>, IComponentData

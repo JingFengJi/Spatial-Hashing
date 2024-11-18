@@ -1,8 +1,9 @@
 ﻿using System;
+using SpatialHashing.Utils;
 using Unity.Mathematics;
 using UnityEngine.Assertions;
 
-namespace HMH.ECS.SpatialHashing
+namespace SpatialHashing
 {
     public struct VoxelRayIterator
     {
@@ -219,28 +220,5 @@ namespace HMH.ECS.SpatialHashing
                             math.asint(number.z) >> (32 - 1)); //int are always 32bit in c# and -1 for sign bit which is at position 31
         }
 
-    }
-
-    public interface IRay
-    {
-        /// <summary>
-        /// The operation to execute when traversing a voxel.The return value defines if the algorithm should stop.
-        /// </summary>
-        /// <param name="voxelIndex"></param>
-        /// <returns></returns>
-        bool OnTraversingVoxel(int3 voxelIndex);
-
-        int3 GetIndexVoxel(float3    position);
-        float3 GetPositionVoxel(int3 index, bool center);
-        float3 CellSize { get; }
-    }
-
-    public interface IRay2D
-    {
-        bool OnTraversingVoxel(int2 voxelIndex);
-
-        int2 GetIndexVoxel(float2    position);
-        float2 GetPositionVoxel(int2 index, bool center);
-        float2 CellSize { get; }
     }
 }

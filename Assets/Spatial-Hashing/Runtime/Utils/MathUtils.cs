@@ -1,7 +1,6 @@
-﻿using HMH.ECS.SpatialHashing;
-using Unity.Mathematics;
+﻿using Unity.Mathematics;
 
-namespace HMH.ECS
+namespace SpatialHashing.Utils
 {
     public static class MathUtils
     {
@@ -225,6 +224,26 @@ namespace HMH.ECS
             float2 min = bounds.Min;
             float2 max = bounds.Max;
             for (int i = 0; i < 2; i++)
+            {
+                float v = sphereCenter[i];
+                if (v < min[i])
+                {
+                    sqDistance += (min[i] - v) * (min[i] - v);
+                }
+                else if (v > max[i])
+                {
+                    sqDistance += (v - max[i]) * (v - max[i]);
+                }
+            }
+            return sqDistance <= radius * radius;
+        }
+        
+        public static bool BoundsIntersectsSphere(Bounds bounds, float3 sphereCenter, float radius)
+        {
+            float sqDistance = 0f;
+            float3 min = bounds.Min;
+            float3 max = bounds.Max;
+            for (int i = 0; i < 3; i++)
             {
                 float v = sphereCenter[i];
                 if (v < min[i])

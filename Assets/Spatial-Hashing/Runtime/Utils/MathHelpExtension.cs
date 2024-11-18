@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 
-namespace HMH.ECS
+namespace SpatialHashing.Utils
 {
     public static class MathHelpExtension
     {
