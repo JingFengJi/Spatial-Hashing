@@ -263,7 +263,7 @@ namespace HMH.ECS.SpatialHashing.Debug
                 DrawSectorGizmos(originVec2, m_SectorDirection.normalized, m_SectorAngle, m_SectorRadius, Color.yellow);
 
                 Gizmos.color = Color.green;
-                var aabb = _spatialHashing.CalculateSectorAABB(originVec2, m_SectorDirection.normalized, m_SectorAngle, m_SectorRadius);
+                var aabb = MathUtils.CalculateSectorAABB(originVec2, m_SectorDirection.normalized, m_SectorAngle, m_SectorRadius);
                 DrawBounds2D(aabb);
             }
         }
