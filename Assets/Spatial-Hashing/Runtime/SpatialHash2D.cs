@@ -509,10 +509,6 @@ namespace HMH.ECS.SpatialHashing
             float theta1 = theta0 - halfAngle;
             float theta2 = theta0 + halfAngle;
 
-            // 规范化角度到 [0, 2π)
-            theta1 = NormalizeAngle(theta1);
-            theta2 = NormalizeAngle(theta2);
-
             // 获取 Bounds 的四个顶点
             float2 min = bounds.Center - bounds.Extents;
             float2 max = bounds.Center + bounds.Extents;
@@ -531,7 +527,7 @@ namespace HMH.ECS.SpatialHashing
             {
                 return true;
             }
-
+            
             // 检查扇形的圆弧是否与 Bounds 相交
             if (SectorArcIntersectsBounds(bounds, sectorOrigin, theta1, theta2, sectorRadius))
             {
