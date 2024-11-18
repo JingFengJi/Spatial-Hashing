@@ -353,7 +353,265 @@ namespace HMH.ECS.SpatialHashing
         #endregion
 
         #region Query
+        
+        /// <summary>
+        /// Bound搜索
+        /// </summary>
+        /// <param name="bounds"></param>
+        /// <param name="resultList"></param>
+        public void Query(Bounds2D bounds, NativeList<T> resultList)
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            // Clamp 查询的 bounds 到世界范围内
+            bounds.Clamp(_data->WorldBounds);
 
+            // 计算查询范围覆盖的网格单元起始和结束索引
+            CalculateStartEndIterationInternal(_data, bounds, out var start, out var end);
+
+            // 用于跟踪已处理的 itemID，避免重复
+            var processedItemIDs = new NativeParallelHashSet<int>(32, Allocator.Temp);
+
+            var hashPosition = new int2(0);
+
+            for (int x = start.x; x < end.x; ++x)
+            {
+                hashPosition.x = x;
+
+                for (int y = start.y; y < end.y; ++y)
+                {
+                    hashPosition.y = y;
+
+                    uint cellHash = Hash(hashPosition);
+
+                    // 获取该网格单元中的所有 itemID
+                    if (_buckets.TryGetFirstValue(cellHash, out int itemID, out var iterator))
+                    {
+                        do
+                        {
+                            // 检查是否已经处理过该 itemID
+                            if (!processedItemIDs.Contains(itemID))
+                            {
+                                processedItemIDs.Add(itemID);
+
+                                // 获取该 itemID 的 Bounds2D
+                                if (_itemIDToBounds.TryGetValue(itemID, out var itemBounds))
+                                {
+                                    // 检查 itemBounds 是否与查询的 bounds 相交
+                                    if (bounds.Intersects(itemBounds))
+                                    {
+                                        // 获取对应的 T 对象
+                                        if (_itemIDToItem.TryGetValue(itemID, out var item))
+                                        {
+                                            resultList.Add(item);
+                                        }
+                                    }
+                                }
+                            }
+                        } while (_buckets.TryGetNextValue(out itemID, ref iterator));
+                    }
+                }
+            }
+
+            // 释放临时的 HashSet
+            processedItemIDs.Dispose();
+        }
+
+        private float2 Rotate(float2 v, float radians)
+        {
+            float sin = math.sin(radians);
+            float cos = math.cos(radians);
+            return new float2(
+                v.x * cos - v.y * sin,
+                v.x * sin + v.y * cos
+            );
+        }
+        
+        public Bounds2D CalculateSectorAABB(float2 origin, float2 direction, float angle, float radius)
+        {
+            float halfAngle = angle * 0.5f;
+
+            // 计算左边界和右边界的方向向量
+            float2 dirLeft = Rotate(direction, -halfAngle);
+            float2 dirRight = Rotate(direction, halfAngle);
+
+            // 初始化 AABB 的最小和最大点
+            float2 min = origin;
+            float2 max = origin;
+
+            // 将扇形的边缘点加入 AABB 的计算
+            float2 pointLeft = origin + dirLeft * radius;
+            float2 pointRight = origin + dirRight * radius;
+            min = math.min(min, math.min(pointLeft, pointRight));
+            max = math.max(max, math.max(pointLeft, pointRight));
+
+            // 如果扇形角度大于 180 度，需要考虑圆的最大外接矩形
+            if (angle >= math.PI)
+            {
+                min = origin - new float2(radius, radius);
+                max = origin + new float2(radius, radius);
+            }
+            else
+            {
+                // 检查扇形是否跨越了坐标轴，以包含可能的最大值
+                float startAngle = math.atan2(dirRight.y, dirRight.x);
+                float endAngle = math.atan2(dirLeft.y, dirLeft.x);
+
+                if (IsAngleBetween(0, startAngle, endAngle))
+                {
+                    float2 point = origin + new float2(radius, 0);
+                    min = math.min(min, point);
+                    max = math.max(max, point);
+                }
+                if (IsAngleBetween(math.PI * 0.5f, startAngle, endAngle))
+                {
+                    float2 point = origin + new float2(0, radius);
+                    min = math.min(min, point);
+                    max = math.max(max, point);
+                }
+                if (IsAngleBetween(math.PI, startAngle, endAngle))
+                {
+                    float2 point = origin + new float2(-radius, 0);
+                    min = math.min(min, point);
+                    max = math.max(max, point);
+                }
+                if (IsAngleBetween(-math.PI * 0.5f, startAngle, endAngle))
+                {
+                    float2 point = origin + new float2(0, -radius);
+                    min = math.min(min, point);
+                    max = math.max(max, point);
+                }
+            }
+
+            return new Bounds2D((min + max) * 0.5f, max - min);
+        }
+
+        private bool IsAngleBetween(float angle, float startAngle, float endAngle)
+        {
+            angle = NormalizeAngle(angle);
+            startAngle = NormalizeAngle(startAngle);
+            endAngle = NormalizeAngle(endAngle);
+
+            if (startAngle <= endAngle)
+            {
+                return angle >= startAngle && angle <= endAngle;
+            }
+            else
+            {
+                return angle >= startAngle || angle <= endAngle;
+            }
+        }
+
+        /// <summary>
+        /// 将角度标准化到 [-π, π] 范围内。
+        /// </summary>
+        /// <param name="angle">需要标准化的角度。</param>
+        /// <returns>标准化后的角度。</returns>
+        private float NormalizeAngle(float angle)
+        {
+            while (angle < -math.PI)
+                angle += 2f * math.PI;
+            while (angle > math.PI)
+                angle -= 2f * math.PI;
+            return angle;
+        }
+        
+        /// <summary>
+        /// 扇形搜索
+        /// </summary>
+        /// <param name="origin"></param>
+        /// <param name="direction"></param>
+        /// <param name="angle"></param>
+        /// <param name="radius"></param>
+        /// <param name="resultList"></param>
+        public void SectorQuery(float2 origin, float2 direction, float angle, float radius, NativeList<T> resultList)
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            // 计算扇形的包围盒
+            var aabb = CalculateSectorAABB(origin, direction, angle, radius);
+
+            // 将 AABB 限制在世界范围内
+            aabb.Clamp(_data->WorldBounds);
+
+            // 计算 AABB 覆盖的网格单元索引范围
+            CalculateStartEndIterationInternal(_data, aabb, out var start, out var end);
+
+            // 用于跟踪已处理的 itemID，避免重复
+            var processedItemIDs = new NativeParallelHashSet<int>(32, Allocator.Temp);
+
+            var hashPosition = new int2(0);
+
+            // 预计算一些值
+            float cosHalfAngle = math.cos(angle * 0.5f);
+            float radiusSquared = radius * radius;
+
+            for (int x = start.x; x < end.x; ++x)
+            {
+                hashPosition.x = x;
+
+                for (int y = start.y; y < end.y; ++y)
+                {
+                    hashPosition.y = y;
+
+                    uint cellHash = Hash(hashPosition);
+
+                    // 获取该网格单元中的所有 itemID
+                    if (_buckets.TryGetFirstValue(cellHash, out int itemID, out var iterator))
+                    {
+                        do
+                        {
+                            // 检查是否已经处理过该 itemID
+                            if (!processedItemIDs.Contains(itemID))
+                            {
+                                processedItemIDs.Add(itemID);
+
+                                // 获取对应的 T 对象
+                                if (_itemIDToItem.TryGetValue(itemID, out var item))
+                                {
+                                    // 获取对象的中心点
+                                    float2 itemCenter = item.GetCenter();
+
+                                    // 计算对象与 origin 之间的向量
+                                    float2 toItem = itemCenter - origin;
+
+                                    // 计算距离的平方
+                                    float distanceSquared = math.lengthsq(toItem);
+
+                                    // 检查距离是否在半径范围内
+                                    if (distanceSquared <= radiusSquared)
+                                    {
+                                        // 归一化 toItem
+                                        float2 toItemDir = math.normalizesafe(toItem);
+
+                                        // 计算方向向量与 toItemDir 的点乘
+                                        float dot = math.dot(direction, toItemDir);
+
+                                        // 检查角度是否在扇形范围内
+                                        if (dot >= cosHalfAngle)
+                                        {
+                                            resultList.Add(item);
+                                        }
+                                    }
+                                }
+                            }
+                        } while (_buckets.TryGetNextValue(out itemID, ref iterator));
+                    }
+                }
+            }
+            
+            // 释放临时的 HashSet
+            processedItemIDs.Dispose();
+        }
+        
+        /// <summary>
+        /// 圆形搜索
+        /// </summary>
+        /// <param name="circleCenter"></param>
+        /// <param name="radius"></param>
+        /// <param name="resultList"></param>
         public void CircleQuery(float2 circleCenter, float radius, NativeList<T> resultList)
         {
             Assert.IsTrue(resultList.IsCreated);

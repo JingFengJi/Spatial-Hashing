@@ -204,7 +204,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             Graphics.DrawMeshInstancedIndirect(instanceMesh, subMeshIndex, instanceMaterial, new UnityEngine.Bounds(Vector3.zero, new Vector3(100.0f, 100.0f, 100.0f)), argsBuffer);
             
             Profiler.BeginSample("SpatialHash_Move");
-            new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
+            //new MoveItemTestJob() { SpatialHash = _spatialHashing, ItemList = _listItem }.Schedule().Complete();
             Profiler.EndSample();
             
             Profiler.BeginSample("SpatialHash_Remove_Add");
@@ -218,7 +218,9 @@ namespace HMH.ECS.SpatialHashing.Debug
             
             m_QueryResults.Clear();
             Profiler.BeginSample("Query");
-            _spatialHashing.CircleQuery(new float2(m_CircleQueryTransform.position.x, m_CircleQueryTransform.position.y), m_CircleQueryRadius, m_QueryResults);
+            //_spatialHashing.CircleQuery(new float2(m_CircleQueryTransform.position.x, m_CircleQueryTransform.position.y), m_CircleQueryRadius, m_QueryResults);
+            
+            _spatialHashing.SectorQuery(new Vector2(m_SectorOrigin.position.x, m_SectorOrigin.position.y), m_SectorDirection, m_SectorAngle, m_SectorRadius, m_QueryResults);
             Profiler.EndSample();
         }
 
@@ -255,9 +257,62 @@ namespace HMH.ECS.SpatialHashing.Debug
                     
                     DrawSquare(new Vector3(m_QueryResults[i].Position.x, m_QueryResults[i].Position.y,0), m_QueryResults[i].Size);
                 }
+                
+                Vector2 originVec2 = new Vector2(m_SectorOrigin.position.x, m_SectorOrigin.position.y);
+                // 调用绘制扇形的函数
+                DrawSectorGizmos(originVec2, m_SectorDirection.normalized, m_SectorAngle, m_SectorRadius, Color.yellow);
+
+                Gizmos.color = Color.green;
+                var aabb = _spatialHashing.CalculateSectorAABB(originVec2, m_SectorDirection.normalized, m_SectorAngle, m_SectorRadius);
+                DrawSquare(new Vector3(aabb.Center.x, aabb.Center.y, 0), aabb.Size.x * 2);
             }
         }
 
+        [SerializeField]
+        private Transform m_SectorOrigin;
+        [SerializeField]
+        private Vector2 m_SectorDirection = new Vector2(1, 0);
+        [SerializeField]
+        private float m_SectorAngle = 90f;
+        [SerializeField]
+        private float m_SectorRadius = 10f;
+        
+        private void DrawSectorGizmos(Vector2 origin, Vector2 direction, float angle, float radius, Color color)
+        {
+            Gizmos.color = color;
+
+            int segmentCount = 30; // 扇形边缘的分段数，值越大越圆滑
+            float angleStep = angle / segmentCount;
+            float halfAngle = angle / 2f;
+
+            // 计算起始角度
+            float startAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - halfAngle;
+
+            Vector3 prevPoint = origin;
+
+            for (int i = 0; i <= segmentCount; i++)
+            {
+                float currentAngle = startAngle + angleStep * i;
+                float rad = currentAngle * Mathf.Deg2Rad;
+
+                Vector3 point = new Vector3(
+                    origin.x + Mathf.Cos(rad) * radius,
+                    origin.y + Mathf.Sin(rad) * radius,
+                    0f);
+
+                if (i > 0)
+                {
+                    // 绘制边缘线
+                    Gizmos.DrawLine(prevPoint, point);
+                }
+
+                // 从原点绘制线到边缘
+                Gizmos.DrawLine(origin, point);
+
+                prevPoint = point;
+            }
+        }
+        
         private void RefreshLinks()
         {
             _timeLastRefresh = Time.realtimeSinceStartup;
