@@ -494,28 +494,70 @@ namespace HMH.ECS.SpatialHashing
         /// <returns></returns>
         public bool SectorNearestQuery(float2 origin, float2 direction, float angle, float radius, out T result)
         {
-            NativeList<T> resultList = new NativeList<T>(32, Allocator.Temp);
-            SectorQuery(origin, direction, angle, radius, resultList);
             float minDis = -1;
             result = default;
-            for (int i = 0; i < resultList.Length; i++)
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            // 计算扇形的包围盒
+            var aabb = MathUtils.CalculateSectorAABB(origin, direction, angle, radius);
+            // 将 AABB 限制在世界范围内
+            aabb.Clamp(_data->WorldBounds);
+            // 计算 AABB 覆盖的网格单元索引范围
+            CalculateStartEndIterationInternal(_data, aabb, out var start, out var end);
+            // 用于跟踪已处理的 itemID，避免重复
+            var processedItemIDs = new NativeParallelHashSet<int>(32, Allocator.Temp);
+            var hashPosition = new int2(0);
+            for (int x = start.x; x < end.x; ++x)
             {
-                if (minDis < 0)
+                hashPosition.x = x;
+                for (int y = start.y; y < end.y; ++y)
                 {
-                    minDis = math.distancesq(resultList[i].GetCenter(), origin);
-                    result = resultList[i];
-                }
-                else
-                {
-                    float dis = math.distancesq(resultList[i].GetCenter(), origin);
-                    if (dis < minDis)
+                    hashPosition.y = y;
+                    uint cellHash = Hash(hashPosition);
+                    // 获取该网格单元中的所有 itemID
+                    if (_buckets.TryGetFirstValue(cellHash, out int itemID, out var iterator))
                     {
-                        minDis = dis;
-                        result = resultList[i];
+                        do
+                        {
+                            // 检查是否已经处理过该 itemID
+                            if (!processedItemIDs.Contains(itemID))
+                            {
+                                processedItemIDs.Add(itemID);
+                                // 获取对应的 T 对象
+                                if (_itemIDToItem.TryGetValue(itemID, out var item))
+                                {
+                                    float dis = math.distancesq(item.GetCenter(), origin);
+                                    if (minDis > 0 && dis > minDis)
+                                    {
+                                        // 如果距离大于最小距，直接跳过
+                                        continue;
+                                    }
+                                    if(MathUtils.BoundsIntersectsSector(_itemIDToBounds[itemID], origin, direction, angle, radius))
+                                    {
+                                        if (minDis < 0)
+                                        {
+                                            minDis = dis;
+                                            result = item;
+                                        }
+                                        else
+                                        {
+                                            
+                                            if (dis < minDis)
+                                            {
+                                                minDis = dis;
+                                                result = item;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } while (_buckets.TryGetNextValue(out itemID, ref iterator));
                     }
                 }
             }
-            resultList.Dispose();
+            // 释放临时的 HashSet
+            processedItemIDs.Dispose();
             return minDis >= 0;
         }
         
@@ -578,8 +620,6 @@ namespace HMH.ECS.SpatialHashing
         
         #endregion
         
-        
-        /// <inheritdoc />
         public void GetIndexiesVoxel(T item, NativeList<int2> results)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
