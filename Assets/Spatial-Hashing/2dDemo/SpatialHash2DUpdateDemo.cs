@@ -264,7 +264,7 @@ namespace HMH.ECS.SpatialHashing.Debug
 
                 Gizmos.color = Color.green;
                 var aabb = _spatialHashing.CalculateSectorAABB(originVec2, m_SectorDirection.normalized, m_SectorAngle, m_SectorRadius);
-                DrawSquare(new Vector3(aabb.Center.x, aabb.Center.y, 0), aabb.Size.x * 2);
+                DrawBounds2D(aabb);
             }
         }
 
@@ -400,6 +400,27 @@ namespace HMH.ECS.SpatialHashing.Debug
                 // 更新前一个点
                 prevPoint = point;
             }
+        }
+
+        private void DrawBounds2D(Bounds2D bounds)
+        {
+            Vector3 center = new Vector3(bounds.Center.x, bounds.Center.y, 0);
+            float2 extents = bounds.Extents;
+
+            // 计算四个顶点的坐标（以 XY 平面为例，Z 轴保持不变）
+            Vector3 topLeft = new Vector3(center.x - extents.x, center.y + extents.y, center.z);
+            Vector3 topRight = new Vector3(center.x + extents.x, center.y + extents.y, center.z);
+            Vector3 bottomRight = new Vector3(center.x + extents.x, center.y - extents.y, center.z);
+            Vector3 bottomLeft = new Vector3(center.x - extents.x, center.y - extents.y, center.z);
+
+            // 设置 Gizmos 的颜色（可选）
+            Gizmos.color = Color.red;
+
+            // 绘制四条边，连接四个顶点
+            Gizmos.DrawLine(topLeft, topRight);       // 上边
+            Gizmos.DrawLine(topRight, bottomRight);   // 右边
+            Gizmos.DrawLine(bottomRight, bottomLeft); // 下边
+            Gizmos.DrawLine(bottomLeft, topLeft);     // 左边
         }
         
         private void DrawSquare(Vector3 center, float sideLength)
